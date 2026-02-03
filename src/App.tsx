@@ -23,6 +23,36 @@ const TYPE_LABELS: Record<TxType, string> = {
   Investments: "Investments",
 };
 
+const TYPE_STYLE: Record<
+  TxType,
+  { bg: string; border: string; text: string; chip: string }
+> = {
+  Income: {
+    bg: "#dcfce7",
+    border: "#16a34a",
+    text: "#14532d",
+    chip: "#16a34a",
+  },
+  Expenses: {
+    bg: "#fee2e2",
+    border: "#dc2626",
+    text: "#7f1d1d",
+    chip: "#dc2626",
+  },
+  Savings: {
+    bg: "#dbeafe",
+    border: "#2563eb",
+    text: "#1e3a8a",
+    chip: "#2563eb",
+  },
+  Investments: {
+    bg: "#ede9fe",
+    border: "#7c3aed",
+    text: "#581c87",
+    chip: "#7c3aed",
+  },
+};
+
 const CATEGORIES: Record<TxType, string[]> = {
   Income: ["Salary", "Scholarship", "Family Support", "Side hustle"],
   Expenses: [
@@ -58,7 +88,9 @@ function safeParseJSON<T>(raw: string | null, fallback: T): T {
 }
 
 function downloadJSON(filename: string, data: unknown) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const blob = new Blob([JSON.stringify(data, null, 2)], {
+    type: "application/json",
+  });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -82,7 +114,9 @@ function sumForMonthTypeCategory(
   return transactions
     .filter(
       (t) =>
-        monthKeyFromDate(t.date) === monthKey && t.type === type && t.category === category
+        monthKeyFromDate(t.date) === monthKey &&
+        t.type === type &&
+        t.category === category
     )
     .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
 }
@@ -190,7 +224,7 @@ function LegendItem({ label, color }: { label: string; color: string }) {
           display: "inline-block",
         }}
       />
-      <span style={{ opacity: 0.85 }}>{label}</span>
+      <span style={{ opacity: 0.9, fontWeight: 700 }}>{label}</span>
     </div>
   );
 }
@@ -247,7 +281,9 @@ function BarChart({
                 );
               })}
             </div>
-            <div style={{ fontSize: 12, marginTop: 6, opacity: 0.85 }}>{lab}</div>
+            <div style={{ fontSize: 12, marginTop: 6, opacity: 0.9, fontWeight: 700 }}>
+              {lab}
+            </div>
           </div>
         ))}
       </div>
@@ -336,7 +372,7 @@ export default function App() {
   const allMonthsInTx = useMemo(() => {
     const set = new Set<string>();
     for (const t of transactions) set.add(monthKeyFromDate(t.date));
-    return Array.from(set).sort(); // oldest -> newest
+    return Array.from(set).sort();
   }, [transactions]);
 
   const [selectedMonth, setSelectedMonth] = useState<string>(() => `${yyyy}-${mm}`);
@@ -364,11 +400,8 @@ export default function App() {
   /* ----------------------------
    * Dashboard calculations
    * ---------------------------- */
-
-  // Ensure selectedMonth always has a sensible value
   useEffect(() => {
     if (allMonthsInTx.length === 0) return;
-    // if user typed something invalid, keep it; otherwise prefer last existing
     if (!selectedMonth || selectedMonth.length !== 7) {
       setSelectedMonth(allMonthsInTx[allMonthsInTx.length - 1]);
     }
@@ -389,7 +422,7 @@ export default function App() {
         net: income - expenses - savings - investments,
       };
     });
-  }, [allMonthsInTx, transactions]); // transactions used via monthTrackedTotal
+  }, [allMonthsInTx, transactions]);
 
   const selectedMonthStats = useMemo(() => {
     const found = monthTotals.find((x) => x.month === selectedMonth);
@@ -432,7 +465,7 @@ export default function App() {
         Investments: trackedSumForType(m, "Investments"),
       },
     };
-  }, [selectedMonth, budgets, transactions]); // budgets via getBudget, transactions via trackedSum
+  }, [selectedMonth, budgets, transactions]);
 
   const topExpenses = useMemo(() => {
     const m = selectedMonth;
@@ -452,10 +485,19 @@ export default function App() {
    * ---------------------------- */
   return (
     <div style={{ padding: 20, maxWidth: 1100, margin: "0 auto", fontFamily: "serif" }}>
-      <h1 style={{ margin: 0 }}>Ma Poche</h1>
-      <div style={{ opacity: 0.75, marginTop: 6 }}>
-Mes finaces dans ma poche
-      </div>
+      <h1
+        style={{
+          margin: 0,
+          fontSize: "2.6rem",
+          fontWeight: 700,
+          color: "#e7b202",
+          letterSpacing: "1px",
+        }}
+      >
+        MA POCHE
+      </h1>
+
+      <div style={{ opacity: 0.75, marginTop: 6 }}>Mes finances dans ma poche et sous mes yeux !</div>
 
       <Tabs active={activeTab} setActive={setActiveTab} />
 
@@ -657,8 +699,6 @@ Mes finaces dans ma poche
       {activeTab === "plan" && (
         <div style={{ marginTop: 16 }}>
           <h2 style={{ marginTop: 0 }}>Planning</h2>
-          <div style={{ opacity: 0.75 }}>
-          </div>
 
           <div style={{ display: "flex", gap: 12, marginTop: 12, flexWrap: "wrap" }}>
             <div>
@@ -686,6 +726,7 @@ Mes finaces dans ma poche
               const budgetTotal = monthBudgetTotal(selectedMonth, t);
               const trackedTotal = monthTrackedTotal(selectedMonth, t);
               const variance = budgetTotal - trackedTotal;
+              const st = TYPE_STYLE[t];
 
               return (
                 <div
@@ -708,15 +749,41 @@ Mes finaces dans ma poche
                       flexWrap: "wrap",
                     }}
                   >
-                    <div style={{ fontWeight: 900, fontSize: 16 }}>{TYPE_LABELS[t]}</div>
+                    {/* ✅ Header type (no CSS, no className) */}
+                    <div
+                      style={{
+                        padding: "10px 14px",
+                        borderRadius: 12,
+                        fontWeight: 900,
+                        fontSize: 16,
+                        color: st.text,
+                        background: st.bg,
+                        borderLeft: `6px solid ${st.border}`,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 10,
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: 3,
+                          background: st.chip,
+                          display: "inline-block",
+                        }}
+                      />
+                      {TYPE_LABELS[t]}
+                    </div>
+
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                      <div style={{ opacity: 0.8 }}>
+                      <div style={{ opacity: 0.9 }}>
                         Budget: <b>{money(budgetTotal)}</b>
                       </div>
-                      <div style={{ opacity: 0.8 }}>
+                      <div style={{ opacity: 0.9 }}>
                         Tracked: <b>{money(trackedTotal)}</b>
                       </div>
-                      <div style={{ opacity: 0.8 }}>
+                      <div style={{ opacity: 0.9 }}>
                         Variance (Budget - Tracked): <b>{money(variance)}</b>
                       </div>
                     </div>
@@ -744,9 +811,7 @@ Mes finaces dans ma poche
                               <td style={{ padding: 12 }}>
                                 <input
                                   value={String(b)}
-                                  onChange={(e) =>
-                                    setBudget(selectedMonth, t, cat, Number(e.target.value))
-                                  }
+                                  onChange={(e) => setBudget(selectedMonth, t, cat, Number(e.target.value))}
                                   style={{
                                     padding: 8,
                                     borderRadius: 10,
@@ -774,10 +839,7 @@ Mes finaces dans ma poche
       {activeTab === "dashboard" && (
         <div style={{ marginTop: 16 }}>
           <h2 style={{ marginTop: 0 }}>Dashboard</h2>
-          <div style={{ opacity: 0.75 }}>
-          </div>
 
-          {/* Month selector */}
           <div
             style={{
               marginTop: 12,
@@ -816,13 +878,10 @@ Mes finaces dans ma poche
             </select>
 
             <div style={{ marginLeft: "auto", opacity: 0.8 }}>
-              {allMonthsInTx.length === 0
-                ? "Add transactions to see charts."
-                : `Available months: ${allMonthsInTx.length}`}
+              {allMonthsInTx.length === 0 ? "Add transactions to see charts." : `Available months: ${allMonthsInTx.length}`}
             </div>
           </div>
 
-          {/* Summary cards for selected month */}
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 12 }}>
             <Card title={`Income (${selectedMonth})`} value={money(selectedMonthStats.income)} />
             <Card title={`Expenses (${selectedMonth})`} value={money(selectedMonthStats.expenses)} />
@@ -831,7 +890,6 @@ Mes finaces dans ma poche
             <Card title={`Net (${selectedMonth})`} value={money(selectedMonthStats.net)} />
           </div>
 
-          {/* Monthly evolution chart */}
           <div
             style={{
               marginTop: 14,
@@ -854,19 +912,23 @@ Mes finaces dans ma poche
                   monthTotals.map((x) => x.savings),
                   monthTotals.map((x) => x.investments),
                 ]}
-                colors={["#16a34a", "#dc2626", "#2563eb", "#7c3aed"]}
+                colors={[
+                  TYPE_STYLE.Income.border,
+                  TYPE_STYLE.Expenses.border,
+                  TYPE_STYLE.Savings.border,
+                  TYPE_STYLE.Investments.border,
+                ]}
               />
             )}
 
             <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10 }}>
-              <LegendItem label="Income" color="#16a34a" />
-              <LegendItem label="Expenses" color="#dc2626" />
-              <LegendItem label="Savings" color="#2563eb" />
-              <LegendItem label="Investments" color="#7c3aed" />
+              <LegendItem label="Income" color={TYPE_STYLE.Income.border} />
+              <LegendItem label="Expenses" color={TYPE_STYLE.Expenses.border} />
+              <LegendItem label="Savings" color={TYPE_STYLE.Savings.border} />
+              <LegendItem label="Investments" color={TYPE_STYLE.Investments.border} />
             </div>
           </div>
 
-          {/* Budget vs Tracked (selected month) */}
           <div
             style={{
               marginTop: 14,
@@ -878,35 +940,31 @@ Mes finaces dans ma poche
           >
             <div style={{ fontWeight: 900, marginBottom: 8 }}>Budget vs Tracked — {selectedMonth}</div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+            <BarChart
+              labels={["Income", "Expenses", "Savings", "Investments"]}
+              series={[
+                [
+                  dashboardBudgetVsTracked.budget.Income,
+                  dashboardBudgetVsTracked.budget.Expenses,
+                  dashboardBudgetVsTracked.budget.Savings,
+                  dashboardBudgetVsTracked.budget.Investments,
+                ],
+                [
+                  dashboardBudgetVsTracked.tracked.Income,
+                  dashboardBudgetVsTracked.tracked.Expenses,
+                  dashboardBudgetVsTracked.tracked.Savings,
+                  dashboardBudgetVsTracked.tracked.Investments,
+                ],
+              ]}
+              colors={["#0f172a", "#9ca3af"]}
+            />
 
-              <BarChart
-                labels={["Income", "Expenses", "Savings", "Investments"]}
-                series={[
-                  [
-                    dashboardBudgetVsTracked.budget.Income,
-                    dashboardBudgetVsTracked.budget.Expenses,
-                    dashboardBudgetVsTracked.budget.Savings,
-                    dashboardBudgetVsTracked.budget.Investments,
-                  ],
-                  [
-                    dashboardBudgetVsTracked.tracked.Income,
-                    dashboardBudgetVsTracked.tracked.Expenses,
-                    dashboardBudgetVsTracked.tracked.Savings,
-                    dashboardBudgetVsTracked.tracked.Investments,
-                  ],
-                ]}
-                colors={["#0f172a", "#9ca3af"]}
-              />
-
-              <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
-                <LegendItem label="Budget" color="#0f172a" />
-                <LegendItem label="Tracked" color="#9ca3af" />
-              </div>
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 10 }}>
+              <LegendItem label="Budget" color="#0f172a" />
+              <LegendItem label="Tracked" color="#9ca3af" />
             </div>
           </div>
 
-          {/* Top expenses (selected month) */}
           <div
             style={{
               marginTop: 14,
