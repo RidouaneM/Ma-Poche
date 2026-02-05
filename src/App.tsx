@@ -617,7 +617,7 @@ export default function App() {
               </Button>
 
               <Button variant="ghost" onClick={() => downloadJSON("finance-transactions.json", transactions)}>
-                Export JSON
+                Export
               </Button>
 
               <label
@@ -632,7 +632,7 @@ export default function App() {
                   fontWeight: 800,
                 }}
               >
-                Import JSON
+                Import
                 <input
                   type="file"
                   accept="application/json"
