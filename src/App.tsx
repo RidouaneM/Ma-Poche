@@ -241,13 +241,79 @@ function BarChart({
 }) {
   const allValues = series.flat();
   const max = Math.max(1, ...allValues.map((v) => (Number.isFinite(v) ? v : 0)));
+  const steps = 4; // nombre de graduations
+const ticks = Array.from({ length: steps + 1 }, (_, i) =>
+  Math.round((max * (steps - i)) / steps)
+);
+
+function LineChart({
+  labels,
+  values,
+  color,
+}: {
+  labels: string[];
+  values: number[];
+  color: string;
+}) {
+  const max = Math.max(1, ...values.map((v) => Math.abs(v)));
 
   return (
-    <div style={{ overflowX: "auto" }}>
+    <div style={{ overflowX: "auto", padding: 8 }}>
+      <svg width={labels.length * 80} height={220}>
+        <line x1="40" y1="10" x2="40" y2="190" stroke="#ccc" />
+        <line x1="40" y1="190" x2={labels.length * 80} y2="190" stroke="#ccc" />
+
+        {values.map((v, i) => {
+          const x = 40 + i * 80;
+          const y = 190 - (v / max) * 160;
+          const prevX = i > 0 ? 40 + (i - 1) * 80 : x;
+          const prevY = i > 0 ? 190 - (values[i - 1] / max) * 160 : y;
+
+          return (
+            <g key={i}>
+              {i > 0 && (
+                <line x1={prevX} y1={prevY} x2={x} y2={y} stroke={color} strokeWidth="3" />
+              )}
+              <circle cx={x} cy={y} r="5" fill={color} />
+              <text x={x} y={205} textAnchor="middle" fontSize="12">
+                {labels[i]}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+return (
+  <div style={{ display: "flex", alignItems: "stretch" }}>
+    {/* Axe Y en $ */}
+    <div
+      style={{
+        width: 60,
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        fontSize: 12,
+        opacity: 0.75,
+        paddingRight: 6,
+      }}
+    >
+      {ticks.map((v, i) => (
+        <div key={i}>{money(v)}</div>
+      ))}
+    </div>
+
+    {/* Graphique */}
+    <div style={{ overflowX: "auto", flex: 1 }}>
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: `repeat(${Math.max(1, labels.length)}, minmax(52px, 1fr))`,
+          gridTemplateColumns: `repeat(${Math.max(
+            1,
+            labels.length
+          )}, minmax(52px, 1fr))`,
           gap: 10,
           alignItems: "end",
           padding: 8,
@@ -281,14 +347,13 @@ function BarChart({
                 );
               })}
             </div>
-            <div style={{ fontSize: 12, marginTop: 6, opacity: 0.9, fontWeight: 700 }}>
-              {lab}
-            </div>
+            <div style={{ fontSize: 12, marginTop: 6, opacity: 0.85 }}>{lab}</div>
           </div>
         ))}
       </div>
     </div>
-  );
+  </div>
+);
 }
 
 export default function App() {
@@ -479,6 +544,8 @@ export default function App() {
       .slice(0, 5);
     return rows;
   }, [selectedMonth, transactions]);
+
+
 
   /* ----------------------------
    * UI
@@ -965,37 +1032,10 @@ export default function App() {
             </div>
           </div>
 
-          <div
-            style={{
-              marginTop: 14,
-              padding: 12,
-              border: "1px solid #e5e7eb",
-              borderRadius: 12,
-              background: "#fff",
-            }}
+          <div   
           >
-            <div style={{ fontWeight: 900, marginBottom: 8 }}>Top expenses — {selectedMonth}</div>
-
-            {topExpenses.length === 0 ? (
-              <div style={{ opacity: 0.7 }}>No expenses this month.</div>
-            ) : (
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ textAlign: "left", borderBottom: "1px solid #e5e7eb" }}>
-                    <th style={{ padding: "8px 6px" }}>Category</th>
-                    <th style={{ padding: "8px 6px" }}>Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topExpenses.map((r) => (
-                    <tr key={r.category} style={{ borderBottom: "1px solid #f1f5f9" }}>
-                      <td style={{ padding: "8px 6px" }}>{r.category}</td>
-                      <td style={{ padding: "8px 6px", fontWeight: 800 }}>{money(r.total)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
+            
+            
           </div>
         </div>
       )}
