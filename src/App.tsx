@@ -23,34 +23,11 @@ const TYPE_LABELS: Record<TxType, string> = {
   Investments: "Investments",
 };
 
-const TYPE_STYLE: Record<
-  TxType,
-  { bg: string; border: string; text: string; chip: string }
-> = {
-  Income: {
-    bg: "#dcfce7",
-    border: "#16a34a",
-    text: "#14532d",
-    chip: "#16a34a",
-  },
-  Expenses: {
-    bg: "#fee2e2",
-    border: "#dc2626",
-    text: "#7f1d1d",
-    chip: "#dc2626",
-  },
-  Savings: {
-    bg: "#dbeafe",
-    border: "#2563eb",
-    text: "#1e3a8a",
-    chip: "#2563eb",
-  },
-  Investments: {
-    bg: "#ede9fe",
-    border: "#7c3aed",
-    text: "#581c87",
-    chip: "#7c3aed",
-  },
+const TYPE_STYLE: Record<TxType, { bg: string; border: string; text: string; chip: string }> = {
+  Income: { bg: "#dcfce7", border: "#16a34a", text: "#14532d", chip: "#16a34a" },
+  Expenses: { bg: "#fee2e2", border: "#dc2626", text: "#7f1d1d", chip: "#dc2626" },
+  Savings: { bg: "#dbeafe", border: "#2563eb", text: "#1e3a8a", chip: "#2563eb" },
+  Investments: { bg: "#ede9fe", border: "#7c3aed", text: "#581c87", chip: "#7c3aed" },
 };
 
 const CATEGORIES: Record<TxType, string[]> = {
@@ -88,9 +65,7 @@ function safeParseJSON<T>(raw: string | null, fallback: T): T {
 }
 
 function downloadJSON(filename: string, data: unknown) {
-  const blob = new Blob([JSON.stringify(data, null, 2)], {
-    type: "application/json",
-  });
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -113,10 +88,7 @@ function sumForMonthTypeCategory(
 ) {
   return transactions
     .filter(
-      (t) =>
-        monthKeyFromDate(t.date) === monthKey &&
-        t.type === type &&
-        t.category === category
+      (t) => monthKeyFromDate(t.date) === monthKey && t.type === type && t.category === category
     )
     .reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
 }
@@ -145,21 +117,9 @@ const Button: React.FC<{
   disabled?: boolean;
 }> = ({ children, onClick, variant = "primary", disabled }) => {
   const styles: Record<string, React.CSSProperties> = {
-    primary: {
-      background: "#111827",
-      color: "white",
-      border: "1px solid #111827",
-    },
-    danger: {
-      background: "#b91c1c",
-      color: "white",
-      border: "1px solid #b91c1c",
-    },
-    ghost: {
-      background: "transparent",
-      color: "#111827",
-      border: "1px solid #d1d5db",
-    },
+    primary: { background: "#111827", color: "white", border: "1px solid #111827" },
+    danger: { background: "#b91c1c", color: "white", border: "1px solid #b91c1c" },
+    ghost: { background: "transparent", color: "#111827", border: "1px solid #d1d5db" },
   };
 
   return (
@@ -229,7 +189,14 @@ function LegendItem({ label, color }: { label: string; color: string }) {
   );
 }
 
-/* ---------- Simple Bar Chart (no libs) ---------- */
+/* ---------- Axis helpers (graduations basées sur tes valeurs) ---------- */
+function makeTicks(maxValue: number, steps = 4) {
+  const max = Math.max(1, Number.isFinite(maxValue) ? maxValue : 1);
+  const arr = Array.from({ length: steps + 1 }, (_, i) => (max * (steps - i)) / steps);
+  return arr.map((v) => Math.round(v));
+}
+
+/* ---------- Bar Chart (avec axe Y en $) ---------- */
 function BarChart({
   labels,
   series,
@@ -239,13 +206,76 @@ function BarChart({
   series: number[][];
   colors: string[];
 }) {
-  const allValues = series.flat();
-  const max = Math.max(1, ...allValues.map((v) => (Number.isFinite(v) ? v : 0)));
-  const steps = 4; // nombre de graduations
-const ticks = Array.from({ length: steps + 1 }, (_, i) =>
-  Math.round((max * (steps - i)) / steps)
-);
+  const allValues = series.flat().map((v) => (Number.isFinite(v) ? v : 0));
+  const max = Math.max(1, ...allValues);
+  const ticks = makeTicks(max, 4);
 
+  return (
+    <div style={{ display: "flex", alignItems: "stretch" }}>
+      <div
+        style={{
+          width: 70,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          fontSize: 12,
+          opacity: 0.75,
+          paddingRight: 8,
+        }}
+      >
+        {ticks.map((v, i) => (
+          <div key={i}>{money(v)}</div>
+        ))}
+      </div>
+
+      <div style={{ overflowX: "auto", flex: 1 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: `repeat(${Math.max(1, labels.length)}, minmax(52px, 1fr))`,
+            gap: 10,
+            alignItems: "end",
+            padding: 8,
+          }}
+        >
+          {labels.map((lab, i) => (
+            <div key={lab} style={{ textAlign: "center" }}>
+              <div
+                style={{
+                  height: 180,
+                  display: "flex",
+                  alignItems: "flex-end",
+                  justifyContent: "center",
+                  gap: 5,
+                }}
+              >
+                {series.map((s, j) => {
+                  const v = Number.isFinite(s[i]) ? s[i] : 0;
+                  const h = (v / max) * 100;
+                  return (
+                    <div
+                      key={j}
+                      title={`${lab}: ${money(v)}`}
+                      style={{
+                        width: 14,
+                        height: `${h}%`,
+                        background: colors[j] ?? "#999",
+                        borderRadius: 6,
+                      }}
+                    />
+                  );
+                })}
+              </div>
+              <div style={{ fontSize: 12, marginTop: 6, opacity: 0.85 }}>{lab}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Line Chart (avec axe Y en $) ---------- */
 function LineChart({
   labels,
   values,
@@ -255,105 +285,64 @@ function LineChart({
   values: number[];
   color: string;
 }) {
-  const max = Math.max(1, ...values.map((v) => Math.abs(v)));
+  const clean = values.map((v) => (Number.isFinite(v) ? v : 0));
+  const max = Math.max(1, ...clean.map((v) => Math.abs(v)));
+  const ticks = makeTicks(max, 4);
+
+  const width = Math.max(480, labels.length * 80);
+  const height = 220;
+
+  const x0 = 70;
+  const yTop = 10;
+  const yBottom = 190;
+  const plotH = yBottom - yTop;
+
+  const pointX = (i: number) => x0 + i * 80;
+  const pointY = (v: number) => yBottom - (Math.abs(v) / max) * plotH;
+
+  const points = clean.map((v, i) => `${pointX(i)},${pointY(v)}`).join(" ");
 
   return (
-    <div style={{ overflowX: "auto", padding: 8 }}>
-      <svg width={labels.length * 80} height={220}>
-        <line x1="40" y1="10" x2="40" y2="190" stroke="#ccc" />
-        <line x1="40" y1="190" x2={labels.length * 80} y2="190" stroke="#ccc" />
-
-        {values.map((v, i) => {
-          const x = 40 + i * 80;
-          const y = 190 - (v / max) * 160;
-          const prevX = i > 0 ? 40 + (i - 1) * 80 : x;
-          const prevY = i > 0 ? 190 - (values[i - 1] / max) * 160 : y;
-
-          return (
-            <g key={i}>
-              {i > 0 && (
-                <line x1={prevX} y1={prevY} x2={x} y2={y} stroke={color} strokeWidth="3" />
-              )}
-              <circle cx={x} cy={y} r="5" fill={color} />
-              <text x={x} y={205} textAnchor="middle" fontSize="12">
-                {labels[i]}
-              </text>
-            </g>
-          );
-        })}
-      </svg>
-    </div>
-  );
-}
-
-return (
-  <div style={{ display: "flex", alignItems: "stretch" }}>
-    {/* Axe Y en $ */}
-    <div
-      style={{
-        width: 60,
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        fontSize: 12,
-        opacity: 0.75,
-        paddingRight: 6,
-      }}
-    >
-      {ticks.map((v, i) => (
-        <div key={i}>{money(v)}</div>
-      ))}
-    </div>
-
-    {/* Graphique */}
-    <div style={{ overflowX: "auto", flex: 1 }}>
+    <div style={{ display: "flex", alignItems: "stretch" }}>
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: `repeat(${Math.max(
-            1,
-            labels.length
-          )}, minmax(52px, 1fr))`,
-          gap: 10,
-          alignItems: "end",
-          padding: 8,
+          width: 70,
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          fontSize: 12,
+          opacity: 0.75,
+          paddingRight: 8,
         }}
       >
-        {labels.map((lab, i) => (
-          <div key={lab} style={{ textAlign: "center" }}>
-            <div
-              style={{
-                height: 180,
-                display: "flex",
-                alignItems: "flex-end",
-                justifyContent: "center",
-                gap: 5,
-              }}
-            >
-              {series.map((s, j) => {
-                const v = Number.isFinite(s[i]) ? s[i] : 0;
-                const h = (v / max) * 100;
-                return (
-                  <div
-                    key={j}
-                    title={`${lab}: ${money(v)}`}
-                    style={{
-                      width: 14,
-                      height: `${h}%`,
-                      background: colors[j] ?? "#999",
-                      borderRadius: 6,
-                    }}
-                  />
-                );
-              })}
-            </div>
-            <div style={{ fontSize: 12, marginTop: 6, opacity: 0.85 }}>{lab}</div>
-          </div>
+        {ticks.map((v, i) => (
+          <div key={i}>{money(v)}</div>
         ))}
       </div>
+
+      <div style={{ overflowX: "auto", flex: 1, padding: 8 }}>
+        <svg width={width} height={height}>
+          <line x1={x0} y1={yTop} x2={x0} y2={yBottom} stroke="#ccc" />
+          <line x1={x0} y1={yBottom} x2={width - 10} y2={yBottom} stroke="#ccc" />
+
+          <polyline fill="none" stroke={color} strokeWidth="3" points={points} />
+
+          {clean.map((v, i) => {
+            const x = pointX(i);
+            const y = pointY(v);
+            return (
+              <g key={i}>
+                <circle cx={x} cy={y} r="5" fill={color} />
+                <text x={x} y={205} textAnchor="middle" fontSize="12">
+                  {labels[i]}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
     </div>
-  </div>
-);
+  );
 }
 
 export default function App() {
@@ -370,7 +359,6 @@ export default function App() {
     localStorage.setItem(TX_STORAGE_KEY, JSON.stringify(transactions));
   }, [transactions]);
 
-  // Form state
   const today = new Date();
   const yyyy = today.getFullYear();
   const mm = String(today.getMonth() + 1).padStart(2, "0");
@@ -532,20 +520,15 @@ export default function App() {
     };
   }, [selectedMonth, budgets, transactions]);
 
-  const topExpenses = useMemo(() => {
-    const m = selectedMonth;
-    const rows = CATEGORIES.Expenses
-      .map((c) => ({
-        category: c,
-        total: sumForMonthTypeCategory(transactions, m, "Expenses", c),
-      }))
-      .filter((r) => r.total > 0)
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
-    return rows;
-  }, [selectedMonth, transactions]);
-
-
+  // ✅ Patrimoine net cumulatif : somme (Income - Expenses) mois après mois
+  const netWorthEvolution = useMemo(() => {
+    let cumulative = 0;
+    return monthTotals.map((m) => {
+      const net = m.income - m.expenses;
+      cumulative += net;
+      return { month: m.month, netWorth: cumulative };
+    });
+  }, [monthTotals]);
 
   /* ----------------------------
    * UI
@@ -782,8 +765,7 @@ export default function App() {
                 }}
               />
               <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
-                Months detected in your Tracking:{" "}
-                {allMonthsInTx.length ? allMonthsInTx.join(", ") : "none yet"}
+                Months detected in your Tracking: {allMonthsInTx.length ? allMonthsInTx.join(", ") : "none yet"}
               </div>
             </div>
           </div>
@@ -816,7 +798,6 @@ export default function App() {
                       flexWrap: "wrap",
                     }}
                   >
-                    {/* ✅ Header type (no CSS, no className) */}
                     <div
                       style={{
                         padding: "10px 14px",
@@ -945,7 +926,9 @@ export default function App() {
             </select>
 
             <div style={{ marginLeft: "auto", opacity: 0.8 }}>
-              {allMonthsInTx.length === 0 ? "Add transactions to see charts." : `Available months: ${allMonthsInTx.length}`}
+              {allMonthsInTx.length === 0
+                ? "Add transactions to see charts."
+                : `Available months: ${allMonthsInTx.length}`}
             </div>
           </div>
 
@@ -957,15 +940,7 @@ export default function App() {
             <Card title={`Net (${selectedMonth})`} value={money(selectedMonthStats.net)} />
           </div>
 
-          <div
-            style={{
-              marginTop: 14,
-              padding: 12,
-              border: "1px solid #e5e7eb",
-              borderRadius: 12,
-              background: "#fff",
-            }}
-          >
+          <div style={{ marginTop: 14, padding: 12, border: "1px solid #e5e7eb", borderRadius: 12, background: "#fff" }}>
             <div style={{ fontWeight: 900, marginBottom: 8 }}>Monthly evolution</div>
 
             {allMonthsInTx.length < 1 ? (
@@ -996,15 +971,7 @@ export default function App() {
             </div>
           </div>
 
-          <div
-            style={{
-              marginTop: 14,
-              padding: 12,
-              border: "1px solid #e5e7eb",
-              borderRadius: 12,
-              background: "#fff",
-            }}
-          >
+          <div style={{ marginTop: 14, padding: 12, border: "1px solid #e5e7eb", borderRadius: 12, background: "#fff" }}>
             <div style={{ fontWeight: 900, marginBottom: 8 }}>Budget vs Tracked — {selectedMonth}</div>
 
             <BarChart
@@ -1032,10 +999,19 @@ export default function App() {
             </div>
           </div>
 
-          <div   
-          >
-            
-            
+          {/* Patrimoine net cumulatif */}
+          <div style={{ marginTop: 14, padding: 12, border: "1px solid #e5e7eb", borderRadius: 12, background: "#fff" }}>
+            <div style={{ fontWeight: 900, marginBottom: 8 }}>Patrimoine net cumulatif</div>
+
+            {netWorthEvolution.length < 1 ? (
+              <div style={{ opacity: 0.7 }}>No data.</div>
+            ) : (
+              <LineChart
+                labels={netWorthEvolution.map((x) => x.month)}
+                values={netWorthEvolution.map((x) => x.netWorth)}
+                color="#0f172a"
+              />
+            )}
           </div>
         </div>
       )}
